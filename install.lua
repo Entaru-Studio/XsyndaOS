@@ -13,10 +13,13 @@ local edata = loadstring(http.get("https://raw.githubusercontent.com/Entaru-Stud
 
 edata.write("startup.lua", "shell.run(\"sys/boot.lua\")")
 fs.makeDir("sys")
+fs.makeDir("user")
 
 edata.write("boot.lua", http.get("https://raw.githubusercontent.com/Entaru-Studio/XsyndaOS/refs/heads/main/sys/boot.lua").readAll(), 1, "sys")
 edata.write("desktop.lua", http.get("https://raw.githubusercontent.com/Entaru-Studio/XsyndaOS/refs/heads/main/sys/desktop.lua").readAll(), 1, "sys")
 edata.write("edata.lua", http.get("https://raw.githubusercontent.com/Entaru-Studio/XsyndaOS/refs/heads/main/sys/edata.lua").readAll(), 1, "sys")
+
+edata.write("updater.lua", http.get("https://raw.githubusercontent.com/Entaru-Studio/XsyndaOS/refs/heads/main/user/updater.lua").readAll(), 1, "user")
 
 fs.delete("install.lua")
 

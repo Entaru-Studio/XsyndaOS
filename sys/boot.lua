@@ -3,6 +3,7 @@ term.clear()
 local work = true
 
 _W, _H = term.getSize()
+_V, _VT = 1, "1.1"
 
 edata = require("edata")
 
@@ -56,7 +57,7 @@ end
 
 wot("X S Y N D A O S", 1, 1)
 wot("Entaru Studio 2026", 1, 2)
-wot("OS Version: 1.0", 1, 3)
+wot(string.format("OS Version: %s (%s)", _VT, _V), 1, 3)
 wot("Free space: " .. math.floor(fs.getFreeSpace("/") / 1000000) .. "mb", 1, 4)
 
 wot("Loading...", 1, 6)
@@ -77,7 +78,7 @@ else
     edata.write("settings.json", textutils.serializeJSON(Settings), 1, "sys")
 end
 
-sleep(math.random(1, 10)/10)
+sleep(math.random(1, 20)/10)
 work = false
 desktop.start()
 
