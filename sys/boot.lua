@@ -3,7 +3,7 @@ term.clear()
 local work = true
 
 _W, _H = term.getSize()
-_V, _VT = 3, "1.1.1"
+_V, _VT = 4, "1.1.2"
 
 edata = require("edata")
 

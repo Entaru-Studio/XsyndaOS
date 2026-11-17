@@ -35,11 +35,11 @@ function m.start(ctx)
 
                 if key == "one" then
                     local edata = loadstring(http.get("https://raw.githubusercontent.com/Entaru-Studio/XsyndaOS/refs/heads/main/sys/edata.lua").readAll())()
-                    
+
                     edata.write("install.lua", http.get("https://raw.githubusercontent.com/Entaru-Studio/XsyndaOS/refs/heads/main/install.lua").readAll(), 1, "")
                     edata.write("startup.lua", "shell.run(\"install.lua\")")
 
-                    wot("Update is downloaded. Rebooting for install...")
+                    wot("Update is downloaded. Rebooting for install...", 1, 9)
                     sleep(3)
                     os.reboot()
                 end
