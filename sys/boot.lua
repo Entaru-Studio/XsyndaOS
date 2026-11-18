@@ -3,7 +3,7 @@ term.clear()
 local work = true
 
 _W, _H = term.getSize()
-_V, _VT = 4, "1.1.2"
+_V, _VT = 5, "1.2"
 
 edata = require("edata")
 
@@ -14,10 +14,17 @@ function wot(text, x, y)
     term.clearLine()
     term.write(text)
 end
-function split(str)
+function split(str, sep)
     local result = {}
-    for word in string.gmatch(str, "%S+") do
-        table.insert(result, word)
+    if sep == nil or sep == "" then
+        for word in string.gmatch(str, "%S+") do
+            table.insert(result, word)
+        end
+    else
+        local pattern = "([^" .. sep:gsub("%p", "%%%0") .. "]+)"
+        for word in string.gmatch(str, pattern) do
+            table.insert(result, word)
+        end
     end
     return result
 end

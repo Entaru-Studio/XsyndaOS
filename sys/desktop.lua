@@ -43,6 +43,12 @@ function m.start()
         [">"] = true, ["?"] = true, minus = true, ["_"] = true,
         equals = true, ["+"] = true
     }
+    local replaceUpperKeys = {
+        leftBracket = "{", rightBracked = "}", semiColon = ":", apostrophe = "\"",
+        comma = "<", period = ">", slash = "?", backslash = "|", one = "!",
+        two = "@", three = "#", four = "$", five = "%", six = "^", seven = "&",
+        eight = "*", nine = "(", zero = ")", minus = "_", equals = "+"
+    }
     local replaceKeys = {
         one = 1, two = 2, three = 3, four = 4, five = 5,
         six = 6, seven = 7, eight = 8, nine = 9, zero = 0,
@@ -98,7 +104,7 @@ function m.start()
 
     enterCommand = function(answer)
         if answer ~= "" and answer ~= nil then
-            history[currentPage][currentStroka] = currentDir .. "> " .. answer .. "_"
+            history[currentPage][currentStroka] = currentDir .. "> " .. answer
             currentStroka = currentStroka + 1
             if currentStroka >= _H then
                 currentPage = currentPage + 1
@@ -121,27 +127,25 @@ function m.start()
                     else
                         os.shutdown()
                     end
+                    newMessageWithAnswer("Shutdown...")
                 elseif command[1] == "reboot" then
                     if command[2] then
                         rebootTimer = os.startTimer(command[2])
                     else
                         os.reboot()
                     end
+                    newMessageWithAnswer("Reboot...")
                 elseif command[1] == "hardreboot" then
-                    local hrc = [[
-local edata = require "sys.edata"
-edata.write("startup.lua", "shell.run(\"sys/boot.lua\")", 1, "")                
-]]
-                    edata.write("startup.lua", hrc, 1, "")
+                    edata.write("startup.lua", "local edata = require \"sys.edata\"; edata.write(\"startup.lua\", \"shell.run(\\\"sys/boot.lua\\\")\", 1, \"\")", 1, "")
                     os.reboot()
                 elseif command[1] == "fs" then
                     if command[2] == "create" then
                         edata.write(command[3], "", 1, currentDir)
                         newMessageWithAnswer("File created")
-                        editor.start(currentDir .. command[3])
+                        enterCommand("run user/editor.lua " .. currentDir .. command[3])
                     elseif command[2] == "open" then
                         newMessageWithAnswer("Opened")
-                        editor.start(currentDir .. command[3])
+                        enterCommand("run user/editor.lua " .. currentDir .. command[3])
                     elseif command[2] == "copy" then
                         fs.copy(currentDir .. command[3], currentDir .. command[4])
                         newMessageWithAnswer("File copied")
@@ -213,24 +217,59 @@ edata.write("startup.lua", "shell.run(\"sys/boot.lua\")", 1, "")
                     newMessage("fs fm kb")
                     newMessage("fs fm mb")
                     newMessage("fs fm gb")
-                    newMessageWithAnswer("for startNumber endNumber command")
+                    newMessage("for startNumber endNumber command")
+                    newMessage("run path [, args...]")
+                    newMessage("print text...")
+                    newMessageWithAnswer("wins? symbol")
                 elseif command[1] == "run" then
-                    local ok, loaded = pcall(dofile, currentDir .. command[2])
-                    if not ok then
-                        newMessageWithAnswer("Error: " .. tostring(loaded))
-                    elseif type(loaded) ~= "table" or type(loaded.start) ~= "function" then
-                        newMessageWithAnswer("Error: app has no .start()")
+                    local filenameTable = split(currentDir .. command[2], ".")
+                    if filenameTable[#filenameTable] == "lua" then
+                        local ok, loaded = pcall(dofile, currentDir .. command[2])
+                        if not ok then
+                            newMessageWithAnswer("Error: " .. tostring(loaded))
+                        elseif type(loaded) ~= "table" or type(loaded.start) ~= "function" then
+                            newMessageWithAnswer("Error: app has no .start()")
+                        else
+                            local args = {}
+                            for i = 3, #command do
+                                args[#args + 1] = command[i]
+                            end
+                            activeApp = loaded
+                            appCtx = {
+                                isClosed = function() return mode ~= "app" end,
+                                close = function() mode = "shell" end,
+                                sysVer = _V,
+                                args = args,
+                                cwd = currentDir,
+                                width = _W,
+                                height = _H,
+                                edata = edata
+                            }
+                            mode = "app"
+                            term.clear()
+                            term.setCursorPos(1, 1)
+                        end
+                    elseif filenameTable[#filenameTable] == "xs" then
+                        local status, data = edata.read(currentDir .. command[2], 1, "")
+                        if status == true then
+                            local commands = split(data, "\n")
+                            for _, v in ipairs(commands) do
+                                if string.sub(v, 1, 1) ~= "#" then
+                                    if string.sub(v, 1, 3) ~= "run" then
+                                        enterCommand(v)
+                                    end
+                                end
+                            end
+                        else
+                            newMessageWithAnswer("File not founded")
+                        end
                     else
-                        activeApp = loaded
-                        appCtx = {
-                            isClosed = function() return mode ~= "app" end,
-                            close = function() mode = "shell" end,
-                            sysVer = _V
-                        }
-                        mode = "app"
-                        term.clear()
-                        term.setCursorPos(1, 1)
+                        newMessageWithAnswer("Unknown file type")
                     end
+                elseif command[1] == "print" then
+                    newMessageWithAnswer(table.concat(command, " ", 2))
+                elseif command[1] == "wins?" then
+                    newMessageWithAnswer("Symbol: " .. command[2] .. " | Code: " .. string.byte(command[2]))
                 else
                     newMessageWithAnswer("Unknown command")
                 end
@@ -249,12 +288,15 @@ edata.write("startup.lua", "shell.run(\"sys/boot.lua\")", 1, "")
     local function mainLoop()
         while work == true do
             if mode == "app" then
-                local realPull = os.pullEvent
+                local realPull = os.pullEventRaw
                 os.pullEvent = function(filter)
                     while true do
                         local ev = {realPull(filter)}
                         if ev[1] == "key" and keys.getName(ev[2]) == "home" then
                             error("__APP_CLOSED__", 0)
+
+                        elseif ev[1] == "terminate" then
+
                         end
                         if filter == nil or ev[1] == filter then
                             return table.unpack(ev)
@@ -279,7 +321,7 @@ edata.write("startup.lua", "shell.run(\"sys/boot.lua\")", 1, "")
                 redraw()
                 newMessageWithAnswer("App closed")
             else
-                local eventData = {os.pullEvent()}
+                local eventData = {os.pullEventRaw()}
                 local event = eventData[1]
 
                 if event == "mouse_scroll" then
@@ -294,6 +336,8 @@ edata.write("startup.lua", "shell.run(\"sys/boot.lua\")", 1, "")
                             redraw()
                         end
                     end
+                elseif event == "terminate" then
+
                 elseif event == "timer" then
                     if eventData[2] == shutDownTimer then
                         os.shutdown()
@@ -316,56 +360,20 @@ edata.write("startup.lua", "shell.run(\"sys/boot.lua\")", 1, "")
                         end
                     else
                         if allowedKeys[key] == true and isNeedCommand == true and selectedPage == currentPage then
-                            local symbol = key
+                            local symbol
                             if isUpper == true then
-                                if symbol == "leftBracket" then
-                                    symbol = "{"
-                                elseif symbol == "rightBracked" then
-                                    symbol = "}"
-                                elseif symbol == "semiColon" then
-                                    symbol = ":"
-                                elseif symbol == "apostrophe" then
-                                    symbol = "\""
-                                elseif symbol == "comma" then
-                                    symbol = "<"
-                                elseif symbol == "period" then
-                                    symbol = ">"
-                                elseif symbol == "slash" then
-                                    symbol = "?"
-                                elseif symbol == "backslash" then
-                                    symbol = "|"
-                                elseif symbol == "one" then
-                                    symbol = "!"
-                                elseif symbol == "two" then
-                                    symbol = "@"
-                                elseif symbol == "three" then
-                                    symbol = "#"
-                                elseif symbol == "four" then
-                                    symbol = "$"
-                                elseif symbol == "five" then
-                                    symbol = "%"
-                                elseif symbol == "six" then
-                                    symbol = "^"
-                                elseif symbol == "seven" then
-                                    symbol = "&"
-                                elseif symbol == "eight" then
-                                    symbol = "*"
-                                elseif symbol == "nine" then
-                                    symbol = "("
-                                elseif symbol == "zero" then
-                                    symbol = ")"
-                                elseif symbol == "`" then
-                                    symbol = "~"
-                                elseif symbol == "minus" then
-                                    symbol = "_"
-                                elseif symbol == "equals" then
-                                    symbol = "+"
-                                else
+                                symbol = replaceUpperKeys[key]
+                                if symbol == nil then
                                     symbol = string.upper( symbol )
                                 end
+                            else
+                                symbol = replaceKeys[key]
+                                if symbol == nil then
+                                    symbol = key
+                                end
                             end
-                            for k, v in pairs(replaceKeys) do
-                                symbol = symbol:gsub(k, v)
+                            if type(symbol) == "number" then
+                                symbol = tostring(symbol)
                             end
                             enteredCommand = enteredCommand .. symbol
                             wot(currentDir .. "> " .. enteredCommand .. "_", 1, currentStroka)
@@ -378,7 +386,7 @@ edata.write("startup.lua", "shell.run(\"sys/boot.lua\")", 1, "")
                     end
                 end
             end
-            sleep(0.01)
+            --sleep(0.001)
         end
     end
 
