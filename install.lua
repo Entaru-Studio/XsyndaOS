@@ -20,6 +20,8 @@ edata.write("desktop.lua", http.get("https://raw.githubusercontent.com/Entaru-St
 edata.write("edata.lua", http.get("https://raw.githubusercontent.com/Entaru-Studio/XsyndaOS/refs/heads/main/sys/edata.lua").readAll(), 1, "sys")
 
 edata.write("updater.lua", http.get("https://raw.githubusercontent.com/Entaru-Studio/XsyndaOS/refs/heads/main/user/updater.lua").readAll(), 1, "user")
+edata.write("store.lua", http.get("https://raw.githubusercontent.com/Entaru-Studio/XsyndaOS/refs/heads/main/user/store.lua").readAll(), 1, "user")
+edata.write("editor.lua", http.get("https://raw.githubusercontent.com/Entaru-Studio/XsyndaOS/refs/heads/main/user/editor.lua").readAll(), 1, "user")
 
 fs.delete("install.lua")
 
