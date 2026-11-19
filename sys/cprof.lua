@@ -62,7 +62,7 @@ function m.start()
                         fs.makeDir("users/" .. username .. "/apps")
 
                         fs.makeDir("users/" .. username .. "/apps/Store/")
-                        fs.copy("sys/store.lua", "users/" .. username .. "/apps/Store/main.lua")
+                        edata.write("users/" .. username .. "/apps/Store/main.lua", http.get("https://raw.githubusercontent.com/Entaru-Studio/XsyndaOSStore/refs/heads/main/Store/main.lua").readAll(), 1, "")
 
                         work = false
                         login.start()
