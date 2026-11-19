@@ -15,7 +15,7 @@ wot("Installing...", 1, 3)
 
 local edata = loadstring(http.get("https://raw.githubusercontent.com/Entaru-Studio/XsyndaOS/refs/heads/main/sys/lib/edata.lua").readAll())()
 
-edata.write("startup.lua", "shell.run(\"sys/init.lua\")")
+edata.write("startup.lua", "shell.run(\"sys/core.lua\")")
 sleep(0.1)
 fs.makeDir("sys")
 sleep(0.1)
