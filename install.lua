@@ -31,6 +31,8 @@ edata.write("cprof.lua", http.get("https://raw.githubusercontent.com/Entaru-Stud
 sleep(0.1)
 edata.write("enpass.lua", http.get("https://raw.githubusercontent.com/Entaru-Studio/XsyndaOS/refs/heads/main/sys/enpass.lua").readAll(), 1, "sys")
 sleep(0.1)
+edata.write("desktop.lua", http.get("https://raw.githubusercontent.com/Entaru-Studio/XsyndaOS/refs/heads/main/sys/desktop.lua").readAll(), 1, "sys")
+sleep(0.1)
 edata.write("edata.lua", http.get("https://raw.githubusercontent.com/Entaru-Studio/XsyndaOS/refs/heads/main/sys/lib/edata.lua").readAll(), 1, "sys/lib")
 sleep(0.1)
 fs.delete("install.lua")
