@@ -3,14 +3,15 @@ local m = {}
 function m.start()
     term.clear()
 
+    paintutils.drawFilledBox(1, 1, _W, _H, colors.black)
+
     local work = true
 
-    local history = {{}}
-    local currentPage = 1
-    local selectedPage = 1
+    local history = {}
 
     local currentStroka = 1
-    local currentDir = "/"
+    local scrollOffsetY = 0
+    local currentDir = "/users/" .. currentProfile .. "/"
 
     local enterCommand
 
@@ -25,265 +26,351 @@ function m.start()
     local enteredCommand = ""
     local isNeedCommand = false
     local isUpper = false
-    local allowedKeys = {
-        a = true, b = true, c = true, d = true, e = true,
-        f = true, g = true, h = true, i = true, j = true,
-        k = true, l = true, m = true, n = true, o = true,
-        p = true, q = true, r = true, s = true, t = true,
-        u = true, v = true, w = true, x = true, y = true,
-        z = true, one = true, two = true, three = true,
-        four = true, five = true, six = true, seven = true,
-        eight = true, nine = true, zero = true, space = true,
-        period = true, comma = true, slash = true, backslash = true,
-        ["!"] = true, ["@"] = true, ["#"] = true, ["$"] = true,
-        ["%"] = true, ["^"] = true, ["&"] = true, ["*"] = true,
-        ["("] = true, [")"] = true, ["{"] = true, ["}"] = true,
-        leftBracked = true, rightBracked = true, ["|"] = true, [":"] = true,
-        semiColon = true, ["\""] = true, apostrophe = true, ["<"] = true,
-        [">"] = true, ["?"] = true, minus = true, ["_"] = true,
-        equals = true, ["+"] = true
-    }
-    local replaceUpperKeys = {
-        leftBracket = "{", rightBracked = "}", semiColon = ":", apostrophe = "\"",
-        comma = "<", period = ">", slash = "?", backslash = "|", one = "!",
-        two = "@", three = "#", four = "$", five = "%", six = "^", seven = "&",
-        eight = "*", nine = "(", zero = ")", minus = "_", equals = "+"
-    }
-    local replaceKeys = {
-        one = 1, two = 2, three = 3, four = 4, five = 5,
-        six = 6, seven = 7, eight = 8, nine = 9, zero = 0,
-        space = " ", period = ".", comma = ",", slash = "/",
-        backslash = "\\", leftBracked = "[", rightBracked = "]",
-        semiColon = ";", apostrophe = "'", minus = "-", equals = "="
-    }
 
     local function redraw()
         term.clear()
-        for i = 1, _H do
-            if history[selectedPage][i] then
-                wot(history[selectedPage][i], 1, i)
+        for i, v in ipairs(history) do
+            if v then
+                wot(v.text, 1, i+scrollOffsetY, false, v.color, colors.black, false)
             end
         end
     end
 
-    function newMessage(text)
+    function newMessage(text, color)
         enteredCommand = ""
+        if not color or color == nil then
+            color = colors.white
+        end
         local splittedText = wrapText(text, _W)
         for i, v in ipairs(splittedText) do
-            wot(v, 1, currentStroka)
-            history[currentPage][currentStroka] = v
+            wot(v, 1, currentStroka+scrollOffsetY, false, color, colors.black, false)
+            history[currentStroka] = {text=v, color=color}
             currentStroka = currentStroka + 1
-            if currentStroka >= _H then
-                currentPage = currentPage + 1
-                history[currentPage] = {}
-                currentStroka = 1
-                selectedPage = currentPage
-                redraw()
-            end
+        end
+        if (math.abs(scrollOffsetY)+_H) < #history then
+            scrollOffsetY = scrollOffsetY - #splittedText
+            redraw()
         end
     end
-    function newMessageWithAnswer(text)
+    function newMessageWithAnswer(text, color)
         enteredCommand = ""
+        if not color or color == nil then
+            color = colors.white
+        end
         local splittedText = wrapText(text, _W)
         for i, v in ipairs(splittedText) do
-            wot(v, 1, currentStroka)
-            history[currentPage][currentStroka] = v
+            wot(v, 1, currentStroka+scrollOffsetY, false, color, colors.black, false)
+            history[currentStroka] = {text=v, color=color}
             currentStroka = currentStroka + 1
-            if currentStroka >= _H then
-                currentPage = currentPage + 1
-                history[currentPage] = {}
-                currentStroka = 1
-                selectedPage = currentPage
-                redraw()
-            end
         end
-        wot(currentDir .. "> " .. enteredCommand .. "_", 1, currentStroka)
-        history[currentPage][currentStroka] = currentDir .. "> " .. enteredCommand .. "_"
+        wot(currentDir .. "> " .. enteredCommand .. "_", 1, currentStroka+scrollOffsetY, false, colors.yellow, colors.black, false)
+        history[currentStroka] = {text=currentDir .. "> " .. enteredCommand .. "_", color=colors.yellow}
         isNeedCommand = true
+        if (math.abs(scrollOffsetY)+_H) < #history then
+            scrollOffsetY = scrollOffsetY - #splittedText - 1
+            redraw()
+        end
     end
 
-    enterCommand = function(answer)
+    enterCommand = function(answer, printOutput)
         if answer ~= "" and answer ~= nil then
-            history[currentPage][currentStroka] = currentDir .. "> " .. answer
+            history[currentStroka] = {text=currentDir .. "> " .. answer, color=colors.yellow}
             currentStroka = currentStroka + 1
-            if currentStroka >= _H then
-                currentPage = currentPage + 1
-                history[currentPage] = {}
-                currentStroka = 1
-            end
             local command = split(answer)
 
             local function processRequest()
                 if command[1] == "selectpath" then
                     if command[2] then
-                        currentDir = command[2]
+                        if command[2] ~= ".." then
+                            currentDir = command[2]
+                        else
+                            currentDir = fs.getDir(command[2])
+                        end
                     else
                         currentDir = "/"
                     end
-                    newMessageWithAnswer("Selected: " .. command[2])
+                    if printOutput then
+                        newMessageWithAnswer("Selected: " .. command[2])
+                    end
+                    return "complete"
                 elseif command[1] == "shutdown" then
                     if command[2] then
                         shutDownTimer = os.startTimer(command[2])
                     else
                         os.shutdown()
                     end
-                    newMessageWithAnswer("Shutdown...")
+                    if printOutput then
+                        newMessageWithAnswer("Shutdown...")
+                    end
+                    return "complete"
                 elseif command[1] == "reboot" then
                     if command[2] then
                         rebootTimer = os.startTimer(command[2])
                     else
                         os.reboot()
                     end
-                    newMessageWithAnswer("Reboot...")
-                elseif command[1] == "hardreboot" then
-                    edata.write("startup.lua", "local edata = require \"sys.edata\"; edata.write(\"startup.lua\", \"shell.run(\\\"sys/boot.lua\\\")\", 1, \"\")", 1, "")
-                    os.reboot()
+                    if printOutput then
+                        newMessageWithAnswer("Reboot...")
+                    end
+                    return "complete"
                 elseif command[1] == "fs" then
                     if command[2] == "create" then
                         edata.write(command[3], "", 1, currentDir)
-                        newMessageWithAnswer("File created")
-                        enterCommand("run user/editor.lua " .. currentDir .. command[3])
+                        if printOutput then
+                            newMessageWithAnswer("File created", colors.lime)
+                        end
+                        enterCommand("runApp Editor " .. currentDir .. command[3])
+                        return "complete"
                     elseif command[2] == "open" then
-                        newMessageWithAnswer("Opened")
-                        enterCommand("run user/editor.lua " .. currentDir .. command[3])
+                        local path = currentDir .. command[3]
+                        if string.find(path, "sys") or string.find(path, "startup.lua") then
+                            if printOutput then
+                                newMessageWithAnswer("Can't open this file :(", colors.red)
+                            end
+                        else
+                            if printOutput then
+                                newMessageWithAnswer("Opened", colors.lime)
+                            end
+                            enterCommand("runApp Editor " .. currentDir .. command[3])
+                        end
+                        return "complete"
+                    elseif command[2] == "set" then
+                        edata.write(command[3], table.concat(command, " ", 4), 1, currentDir)
+                        return "complete"
                     elseif command[2] == "copy" then
                         fs.copy(currentDir .. command[3], currentDir .. command[4])
-                        newMessageWithAnswer("File copied")
+                        if printOutput then
+                            newMessageWithAnswer("File copied", colors.lime)
+                        end
+                        return "complete"
                     elseif command[2] == "rename" then
                         fs.copy(currentDir .. command[3], currentDir .. command[4])
-                        fs.delete(currentDir .. command[3])
-                        newMessageWithAnswer("File renamed")
+                        fs.delete(currentDir .. command[3], colors.lime)
+                        if printOutput then
+                            newMessageWithAnswer("File renamed", colors.lime)
+                        end
+                        return "complete"
                     elseif command[2] == "folder" then
-                        fs.makeDir(currentDir .. command[3])
-                        newMessageWithAnswer("Folder(-s) created")
+                        fs.makeDir(currentDir .. command[3], colors.lime)
+                        if printOutput then
+                            newMessageWithAnswer("Folder(-s) created", colors.lime)
+                        end
+                        return "complete"
                     elseif command[2] == "move" then
                         fs.move(currentDir .. command[3], currentDir .. command[4])
-                        newMessageWithAnswer("File moved")
+                        if printOutput then
+                            newMessageWithAnswer("File moved", colors.lime)
+                        end
+                        return "complete"
                     elseif command[2] == "delete" then
                         fs.delete(command[3])
+                        if printOutput then
+                            newMessageWithAnswer("File or directory deleted", colors.lime)
+                        end
+                        return "complete"
                     elseif command[2] == "list" then
                         local list = edata.list(currentDir .. command[3])
-                        newMessage("   Directories")
+                        
+                        if printOutput then
+                            newMessage("Directories", colors.lime)
+                        end
                         if #list.dir == 0 then
-                            newMessage("Empty")
+                            if printOutput then
+                                newMessage("Empty", colors.red)
+                            end
                         else 
                             for i, v in ipairs(list.dir) do
-                                newMessage(v)
-                            end
-                        end
-                        newMessage("   Files")
-                        if #list.files == 0 then
-                            newMessageWithAnswer("Empty")
-                        else
-                            for i, v in ipairs(list.files) do
-                                if i+1 >= #list.files then
-                                    newMessageWithAnswer(v)
-                                else
+                                if printOutput then
                                     newMessage(v)
                                 end
                             end
                         end
+                        if printOutput then
+                            newMessage("Files", colors.lime)
+                        end
+                        if #list.files == 0 then
+                            if printOutput then
+                                newMessageWithAnswer("Empty", colors.red)
+                            end
+                        else
+                            for i, v in ipairs(list.files) do
+                                if i+1 >= #list.files then
+                                    if printOutput then
+                                        newMessageWithAnswer(v)
+                                    end
+                                else
+                                    if printOutput then
+                                        newMessage(v)
+                                    end
+                                end
+                            end
+                        end
+                        return list
                     elseif command[2] == "fm" then
                         if command[4] == "mb" then
-                            newMessageWithAnswer("Remaining memory: " .. (fs.getFreeSpace(currentDir .. command[3])/1048576))
+                            if printOutput then
+                                newMessageWithAnswer("Remaining memory: " .. (fs.getFreeSpace(currentDir .. command[3])/1048576), colors.lime)
+                            end
+                            return fs.getFreeSpace(currentDir .. command[3])/1048576
                         elseif command[4] == "gb" then
-                            newMessageWithAnswer("Remaining memory: " .. (fs.getFreeSpace(currentDir .. command[3])/1073741824))
+                            if printOutput then
+                                newMessageWithAnswer("Remaining memory: " .. (fs.getFreeSpace(currentDir .. command[3])/1073741824), colors.lime)
+                            end
+                            return fs.getFreeSpace(currentDir .. command[3])/1073741824
                         elseif command[4] == "kb" then
-                            newMessageWithAnswer("Remaining memory: " .. (fs.getFreeSpace(currentDir .. command[3])/1024))
+                            if printOutput then
+                                newMessageWithAnswer("Remaining memory: " .. (fs.getFreeSpace(currentDir .. command[3])/1024), colors.lime)
+                            end
+                            return fs.getFreeSpace(currentDir .. command[3])/1024
                         else
-                            newMessageWithAnswer("Remaining memory: " .. fs.getFreeSpace(currentDir .. command[3]))
+                            if printOutput then
+                                newMessageWithAnswer("Remaining memory: " .. fs.getFreeSpace(currentDir .. command[3]), colors.lime)
+                            end
+                            return fs.getFreeSpace(currentDir .. command[3])
                         end
                     else
-                        newMessageWithAnswer("Unknown fs command")
+                        if printOutput then
+                            newMessageWithAnswer("Unknown fs command", colors.red)
+                        end
+                        return "unknown fs command"
                     end
                 elseif command[1] == "for" then
                     for i = command[2], command[3] do
                         enterCommand(table.concat(command, " ", 4))
                     end
+                    if printOutput then
+                        newMessageWithAnswer("Completed!", colors.lime)
+                    end
+                    return "complete"
                 elseif command[1] == "help" then
-                    newMessage("selectpath path")
-                    newMessage("shutdown [time]")
-                    newMessage("reboot [time]")
-                    newMessage("hardreboot")
-                    newMessage("fs create path")
-                    newMessage("fs open path")
-                    newMessage("fs copy path newPath")
-                    newMessage("fs rename filePath newPath")
-                    newMessage("fs folder path")
-                    newMessage("fs move oldPath newPath")
-                    newMessage("fs delete path")
-                    newMessage("fs list path")
-                    newMessage("fs fm")
-                    newMessage("fs fm kb")
-                    newMessage("fs fm mb")
-                    newMessage("fs fm gb")
-                    newMessage("for startNumber endNumber command")
-                    newMessage("run path [, args...]")
-                    newMessage("print text...")
-                    newMessageWithAnswer("wins? symbol")
-                elseif command[1] == "run" then
-                    local filenameTable = split(currentDir .. command[2], ".")
-                    if filenameTable[#filenameTable] == "lua" then
-                        local ok, loaded = pcall(dofile, currentDir .. command[2])
-                        if not ok then
-                            newMessageWithAnswer("Error: " .. tostring(loaded))
-                        elseif type(loaded) ~= "table" or type(loaded.start) ~= "function" then
-                            newMessageWithAnswer("Error: app has no .start()")
-                        else
-                            local args = {}
-                            for i = 3, #command do
-                                args[#args + 1] = command[i]
-                            end
-                            activeApp = loaded
-                            appCtx = {
-                                isClosed = function() return mode ~= "app" end,
-                                close = function() mode = "shell" end,
-                                sysVer = _V,
-                                args = args,
-                                cwd = currentDir,
-                                width = _W,
-                                height = _H,
-                                edata = edata
-                            }
-                            mode = "app"
-                            term.clear()
-                            term.setCursorPos(1, 1)
+                    if printOutput then
+                        newMessage("selectpath path")
+                        newMessage("shutdown [time]")
+                        newMessage("reboot [time]")
+                        newMessage("fs create path")
+                        newMessage("fs open path")
+                        newMessage("fs set path data")
+                        newMessage("fs copy path newPath")
+                        newMessage("fs rename filePath newPath")
+                        newMessage("fs folder path")
+                        newMessage("fs move oldPath newPath")
+                        newMessage("fs delete path")
+                        newMessage("fs list path")
+                        newMessage("fs fm")
+                        newMessage("fs fm kb")
+                        newMessage("fs fm mb")
+                        newMessage("fs fm gb")
+                        newMessage("for startNumber endNumber command")
+                        newMessage("runApp appName [, args...]")
+                        newMessage("runLuaX path")
+                        newMessage("print text...")
+                        newMessage("clear")
+                        newMessage("logout")
+                        newMessageWithAnswer("wins? symbol")
+                    end
+                elseif command[1] == "runApp" then
+                    local ok, loaded = pcall(dofile, "users/" .. currentProfile .. "/apps/" .. command[2] .. "/main.lua")
+                    if not ok then
+                        if printOutput then
+                            newMessageWithAnswer("Error: " .. tostring(loaded), colors.red)
                         end
-                    elseif filenameTable[#filenameTable] == "xs" then
-                        local status, data = edata.read(currentDir .. command[2], 1, "")
-                        if status == true then
-                            local commands = split(data, "\n")
-                            for _, v in ipairs(commands) do
-                                if string.sub(v, 1, 1) ~= "#" then
-                                    if string.sub(v, 1, 3) ~= "run" then
-                                        enterCommand(v)
-                                    end
+                        return "error: " .. tostring(loaded)
+                    elseif type(loaded) ~= "table" or type(loaded.start) ~= "function" then
+                        if printOutput then
+                            newMessageWithAnswer("Error: app has no .start()", colors.red)
+                        end
+                        return "error: no .start()"
+                    else
+                        local args = {}
+                        for i = 3, #command do
+                            args[#args + 1] = command[i]
+                        end
+                        activeApp = loaded
+                        appCtx = {
+                            isClosed = function() return mode ~= "app" end,
+                            close = function() mode = "shell" end,
+                            sysVer = _V,
+                            sysVerT = _VT,
+                            args = args,
+                            currentDir = "users/" .. currentProfile .. "/apps/" .. command[2],
+                            width = _W,
+                            height = _H,
+                            edata = edata,
+                            currentProfile = currentProfile
+                        }
+                        mode = "app"
+                        term.clear()
+                        term.setCursorPos(1, 1)
+                    end
+                elseif command[1] == "runLuaX" then
+                    local api = {
+                        runCommand = function(command)
+                            if command ~= "run" and command ~= "" and command ~= nil and command ~= "fs open" and command ~= "fs create" then
+                                enterCommand(command)
+                            end
+                        end
+                    }
+
+                    local status, data = edata.read(currentDir .. command[2], 1, "")
+                    if status == true then
+                        local script = load(data, "customScript", "t", api)
+                        if script then
+                            local status, err = pcall(script)
+                            if status == false then
+                                if printOutput then
+                                    newMessageWithAnswer("Script error: " .. err, colors.red)
+                                end
+                            else
+                                if printOutput then
+                                    newMessageWithAnswer("Script completed", colors.lime)
                                 end
                             end
                         else
-                            newMessageWithAnswer("File not founded")
+                            if printOutput then
+                                newMessageWithAnswer("File not founded or not luaX script", colors.red)
+                            end
                         end
                     else
-                        newMessageWithAnswer("Unknown file type")
+                        if printOutput then
+                            newMessageWithAnswer("File not founded", colors.red)
+                        end
                     end
                 elseif command[1] == "print" then
                     newMessageWithAnswer(table.concat(command, " ", 2))
+                    return table.concat(command, " ", 2)
                 elseif command[1] == "wins?" then
-                    newMessageWithAnswer("Symbol: " .. command[2] .. " | Code: " .. string.byte(command[2]))
+                    if printOutput then
+                        newMessageWithAnswer("Symbol: " .. command[2] .. " | Code: " .. string.byte(command[2]))
+                    end
+                    return command[2], string.byte(command[2])
+                elseif command[1] == "clear" then
+                    history = {}
+                    redraw()
+                    if printOutput then
+                        newMessageWithAnswer("Cleared")
+                    end
+                    return "complete"
+                elseif command[1] == "logout" then
+                    work = false
+                    currentProfile = ""
+                    login.start()
                 else
-                    newMessageWithAnswer("Unknown command")
+                    if printOutput then
+                        newMessageWithAnswer("Unknown command", colors.red)
+                    end
+                    return "unknown command"
                 end
             end
 
             local status, err = pcall(processRequest)
             if status == false then
-                newMessageWithAnswer("Error: " .. (err or "unknown"))
+                newMessageWithAnswer("Error: " .. (err or "unknown"), colors.red)
             end
         else
             isNeedCommand = true
         end
     end
-    newMessageWithAnswer(string.format("XsyndaOS | Entaru Studio | Version %s (%s)", _VT, _V))
+    newMessageWithAnswer(string.format("XsyndaOS | Entaru Studio | Version %s (%s)", _VT, _V), colors.lime)
 
     local function mainLoop()
         while work == true do
@@ -315,7 +402,6 @@ function m.start()
                 activeApp = nil
                 appCtx = nil
 
-                selectedPage = currentPage
                 term.clear()
                 term.setCursorPos(1, 1)
                 redraw()
@@ -326,15 +412,13 @@ function m.start()
 
                 if event == "mouse_scroll" then
                     if eventData[2] == 1 then
-                        if selectedPage < #history then
-                            selectedPage = selectedPage + 1
+                        if (math.abs(scrollOffsetY)+_H) < #history then
+                            scrollOffsetY = scrollOffsetY - 1
                             redraw()
                         end
-                    else
-                        if selectedPage > 1 then
-                            selectedPage = selectedPage - 1
-                            redraw()
-                        end
+                    elseif eventData[2] == 0 and math.abs(scrollOffsetY) >= 1 then
+                        scrollOffsetY = scrollOffsetY + 1
+                        redraw()
                     end
                 elseif event == "terminate" then
 
@@ -349,25 +433,30 @@ function m.start()
                     if key == "leftShift" then
                         isUpper = true
                     elseif key == "enter" then
-                        if isNeedCommand == true and selectedPage == currentPage then
+                        if isNeedCommand == true then
                             isNeedCommand = false
-                            enterCommand(enteredCommand)
+                            enterCommand(enteredCommand, true)
                         end
                     elseif key == "backspace" then
                         if isNeedCommand == true then
                             enteredCommand = string.sub(enteredCommand, 1, -2)
-                            wot(currentDir .. "> " .. enteredCommand .. "_", 1, currentStroka)
+                            wot(currentDir .. "> " .. enteredCommand .. "_", 1, currentStroka+scrollOffsetY, true, colors.yellow, colors.black, false)
+                        end
+                    elseif key == "end" then
+                        if (math.abs(scrollOffsetY)+_H) < #history then
+                            scrollOffsetY = -#history + _H
+                            redraw()
                         end
                     else
-                        if allowedKeys[key] == true and isNeedCommand == true and selectedPage == currentPage then
+                        if allowedLetters[key] == true and isNeedCommand == true then
                             local symbol
                             if isUpper == true then
-                                symbol = replaceUpperKeys[key]
+                                symbol = replaceUpperLetters[key]
                                 if symbol == nil then
-                                    symbol = string.upper( symbol )
+                                    symbol = string.upper( key )
                                 end
                             else
-                                symbol = replaceKeys[key]
+                                symbol = replaceLetters[key]
                                 if symbol == nil then
                                     symbol = key
                                 end
@@ -376,7 +465,7 @@ function m.start()
                                 symbol = tostring(symbol)
                             end
                             enteredCommand = enteredCommand .. symbol
-                            wot(currentDir .. "> " .. enteredCommand .. "_", 1, currentStroka)
+                            wot(currentDir .. "> " .. enteredCommand .. "_", 1, currentStroka+scrollOffsetY, true, colors.yellow, colors.black, false)
                         end
                     end
                 elseif event == "key_up" then
