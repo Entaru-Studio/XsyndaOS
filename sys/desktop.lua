@@ -209,22 +209,22 @@ function m.start()
                     elseif command[2] == "fm" then
                         if command[4] == "mb" then
                             if printOutput then
-                                newMessageWithAnswer("Remaining memory: " .. (fs.getFreeSpace(currentDir .. command[3])/1048576), colors.lime)
+                                newMessageWithAnswer("Remaining memory: " .. (fs.getFreeSpace(currentDir .. command[3])/1048576).."mb", colors.lime)
                             end
                             return fs.getFreeSpace(currentDir .. command[3])/1048576
                         elseif command[4] == "gb" then
                             if printOutput then
-                                newMessageWithAnswer("Remaining memory: " .. (fs.getFreeSpace(currentDir .. command[3])/1073741824), colors.lime)
+                                newMessageWithAnswer("Remaining memory: " .. (fs.getFreeSpace(currentDir .. command[3])/1073741824) .. "gb", colors.lime)
                             end
                             return fs.getFreeSpace(currentDir .. command[3])/1073741824
                         elseif command[4] == "kb" then
                             if printOutput then
-                                newMessageWithAnswer("Remaining memory: " .. (fs.getFreeSpace(currentDir .. command[3])/1024), colors.lime)
+                                newMessageWithAnswer("Remaining memory: " .. (fs.getFreeSpace(currentDir .. command[3])/1024) .. "kb", colors.lime)
                             end
                             return fs.getFreeSpace(currentDir .. command[3])/1024
                         else
                             if printOutput then
-                                newMessageWithAnswer("Remaining memory: " .. fs.getFreeSpace(currentDir .. command[3]), colors.lime)
+                                newMessageWithAnswer("Remaining memory: " .. fs.getFreeSpace(currentDir .. command[3]).."b", colors.lime)
                             end
                             return fs.getFreeSpace(currentDir .. command[3])
                         end
@@ -256,10 +256,10 @@ function m.start()
                         newMessage("fs move oldPath newPath")
                         newMessage("fs delete path")
                         newMessage("fs list path")
-                        newMessage("fs fm")
-                        newMessage("fs fm kb")
-                        newMessage("fs fm mb")
-                        newMessage("fs fm gb")
+                        newMessage("fs fm path")
+                        newMessage("fs fm path kb")
+                        newMessage("fs fm path mb")
+                        newMessage("fs fm path gb")
                         newMessage("for startNumber endNumber command")
                         newMessage("runApp appName [, args...]")
                         newMessage("runLuaX path")

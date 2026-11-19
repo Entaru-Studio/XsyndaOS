@@ -7,7 +7,7 @@ setGlobal("edata", edata)
 
 -- Main vars
 _W, _H = term.getSize(); setGlobal("_W", _W); setGlobal("_H", _H)
-_V, _VT = 7, "2.1"; setGlobal("_V", _V); setGlobal("_VT", _VT)
+_V, _VT = 8, "2.2"; setGlobal("_V", _V); setGlobal("_VT", _VT)
 setGlobal("currentProfile", "")
 
 -- For keyboard
