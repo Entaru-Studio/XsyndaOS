@@ -345,6 +345,8 @@ function m.start()
                     return command[2], string.byte(command[2])
                 elseif command[1] == "clear" then
                     history = {}
+                    currentStroka = 1
+                    scrollOffsetY = 0
                     redraw()
                     if printOutput then
                         newMessageWithAnswer("Cleared")
